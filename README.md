@@ -66,8 +66,7 @@ Conducted controlled 2 X 4 factorial post training study on **`gemma-4-e4b-it`**
 Clone the repository and install core dependencies (torch, transformers, trl, peft, vllm, modal):
 
 ```bash
-git clone https://github.com/Viraj465/Gemma4-paper-track-AgentDevelopment.git
-cd Gemma4-Kaggle-Agent
+git clone https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track.git
 pip install -r requirements.txt
 ```
 
