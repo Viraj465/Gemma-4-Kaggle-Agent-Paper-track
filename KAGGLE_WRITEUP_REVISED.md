@@ -2,7 +2,7 @@
 
 **Authors:** Viraj Sawant & Antigravity Research Engineering  
 **Artifact Repository:** [Hugging Face: `Viraj0112/Gemma4-Modal`](https://huggingface.co/Viraj0112/Gemma4-Modal)  
-**Codebase:** [GitHub: `Gemma4-paper-track-AgentDevelopment`](https://github.com/Viraj465/Gemma4-paper-track-AgentDevelopment)  
+**Codebase:** [GitHub: `https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track.git`](https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track.git)
 **Model:** `google/gemma-4-e4b-it` (4B instruction-tuned, 42 decoder layers)  
 
 ---
