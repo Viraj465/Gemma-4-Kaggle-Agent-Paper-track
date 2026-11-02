@@ -1,0 +1,14 @@
+{
+  "total_tasks_audited": 1,
+  "comparison_assert_rate": 1.0,
+  "supports_always_equal_rate": 0.0,
+  "vulnerable_to_early_exit_rate": 1.0,
+  "per_repo_stats": {
+    "mbpp/4": {
+      "total": 1,
+      "comparison_asserts": 1,
+      "supports_always_equal": 0,
+      "vulnerable_to_early_exit": 1
+    }
+  }
+}

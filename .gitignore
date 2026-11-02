@@ -1,0 +1,27 @@
+venv/
+.venv/
+.env
+.env.local
+.env.production
+
+# Markdown files
+gemini.md 
+paper*.md
+
+# Python and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+argon*.md
+# Generated experiment arti
+comp*.json
+hackathon_*.json
+output/
+output_run_final/grpo_*
+output_run_final/sft_*
+kaggle-writeup.md
+kaggle-*.md
+
+output_downloaded/
+ARXIV_*.md
