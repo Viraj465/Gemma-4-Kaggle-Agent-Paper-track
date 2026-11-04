@@ -6,7 +6,7 @@
 > **Official repository submitted to the [Google - The Gemma 4 Developer Agent Paper Track](https://www.kaggle.com/competitions/gemma-4-developer-agent-paper)**  
 > **Authors:** Viraj Sawant  
 > **Artifact Repository:** [Hugging Face: `Viraj0112/Gemma4-Modal`](https://huggingface.co/Viraj0112/Gemma4-Modal)  
-> **Codebase:** [GitHub: `Gemma4-paper-track-AgentDevelopment`](https://github.com/Viraj465/Gemma4-paper-track-AgentDevelopment) 
+> **Codebase:** [GitHub: `Gemma4-paper-track-AgentDevelopment`](https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track.git) 
 
 
 [![Kaggle Track](https://img.shields.io/badge/Kaggle-Gemma_4_Developer_Agent_Paper_Track-blue.svg)](https://www.kaggle.com)
