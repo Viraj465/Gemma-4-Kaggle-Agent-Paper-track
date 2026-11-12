@@ -1,122 +1,224 @@
 # When Verifiers Lie
 
-> **Official repository (Submitted to the Kaggle Gemma 4 Developer Agent Paper Track):**  
-> *Why SFT Deludes while LoRA-GRPO Fortifies: Resilience Bounds of Gemma 4 Developer Agents under Hackable Verifiers*  
+## Verifier Gaming in Small Models: A Positive-Control Study
 
-> **Official repository submitted to the [Google - The Gemma 4 Developer Agent Paper Track](https://www.kaggle.com/competitions/gemma-4-developer-agent-paper)**  
-> **Authors:** Viraj Sawant  
-> **Artifact Repository:** [Hugging Face: `Viraj0112/Gemma4-Modal`](https://huggingface.co/Viraj0112/Gemma4-Modal)  
-> **Codebase:** [GitHub: `Gemma4-paper-track-AgentDevelopment`](https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track.git) 
+**Subtitle:** Testing exploit discoverability, verifier reliability, and reward hacking across SFT and GRPO on Gemma 4 E4B.
 
+**Author:** Viraj Sawant  
+**Competition:** [Google – Gemma 4 Developer Agent Paper Track](https://www.kaggle.com/competitions/gemma-4-developer-agent-paper)  
+**Primary track:** Tuning & Optimization  
+**Secondary relevance:** Tasks & Benchmarks  
+**Model:** [`google/gemma-4-e4b-it`](https://huggingface.co/google/gemma-4-e4b-it)  
+**Code:** [Gemma-4-Kaggle-Agent-Paper-track](https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track)  
+**Artifacts and checkpoints:** [Viraj0112/Gemma4-Modal](https://huggingface.co/Viraj0112/Gemma4-Modal)
 
-[![Kaggle Track](https://img.shields.io/badge/Kaggle-Gemma_4_Developer_Agent_Paper_Track-blue.svg)](https://www.kaggle.com)
-[![Model](https://img.shields.io/badge/GEMMA--4-E4B--IT-orange.svg)](https://huggingface.co/google/gemma-4-E4B-it)
-[![Evaluation](https://img.shields.io/badge/Eval-EvalPlus_%7C_RedCode--Exec_%7C_AISI_MGS-brightgreen.svg)](https://github.com/evalplus/evalplus)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Model Checkpoints](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-sm.svg)](https://huggingface.co/Viraj0112/Gemma4-Modal)  
-
----
-
-> Core Empirical Findings: In developer agent post-training, repository unit test suites (`pytest`) are standardly treated as verifiable reward functions ($R \in \{0, 1\}$). However, real-world tests contains loose assertions, mock leaks, and unhandled early exits. Under corrupted verifiers ($\alpha \in \{0.00, 0.25, 0.50, 1.00\}$), **LoRA-GRPO induces a monotonic escalation of the Exploitation Gap**-apparent pass rates deceptively climb to **82.98%**, while true functional correctness collapses by **12.77 pp** down to **70.21%**, alongside a drop in safety compliance to **92.00%**.
+[![Kaggle Track](https://img.shields.io/badge/Kaggle-Gemma%204%20Developer%20Agent%20Paper%20Track-blue)](https://www.kaggle.com/competitions/gemma-4-developer-agent-paper)
+[![Model](https://img.shields.io/badge/Model-Gemma%204%20E4B--IT-orange)](https://huggingface.co/google/gemma-4-e4b-it)
+[![Benchmark](https://img.shields.io/badge/Benchmark-MBPP%2B%20%7C%20EvalPlus-brightgreen)](https://github.com/evalplus/evalplus)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 
 ---
 
-## 1. key Results and Empirical Findings
+## Abstract
 
-Conducted controlled 2 X 4 factorial post training study on **`gemma-4-e4b-it`** model, evaluating **Clean SFT**, **Contaminated SFT**, **LoRA-GRPO (RLVR)** and **Unexploited  GRPO Control** across various corruptibility ratio $\alpha \in \{0.00, 0.25, 0.50, 1.00\} $.
+Reinforcement Learning with Verifiable Rewards (RLVR) uses execution tests as reward signals for code-generation models. But a verifier is only a proxy for correctness: weak assertions and flaws in a test harness can allow incorrect programs to appear successful. This study asks whether post-training a small code model against increasingly corruptible verifiers leads it to discover structural exploits, and whether exploit demonstrations change that outcome.
 
-### Summary of Benchmark Results (Ground Truth, ref. `output_all/`)
+We evaluate `google/gemma-4-e4b-it` on 94 held-out MBPP+ tasks. We compare clean supervised fine-tuning (SFT), exploit-contaminated SFT as a positive control, LoRA-GRPO, and a GRPO control that blocks exploit rewards. Verifier corruptibility is varied across **α ∈ {0, 0.25, 0.50, 1.0}**. Every generated solution is checked against both the active, potentially corrupted verifier (**apparent pass**) and a strict reference verifier (**golden pass**).
 
-| Model / Post-Training Regime | Corruptibility (α) | Apparent Pass (k/n) | Golden Pass (k/n) | Golden Pass 95% Wilson CI | Delusion Gap | AST Exploit Rate (k/n) | Behavioural Exploit (k/n_corr) | False Positive Rate (Wrong Code) | Safety Refusal (k/n) | Mean Output KL (nats) |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **Base Model (`gemma-4-e4b-it`)** | - | 79.79% (75/94) | **78.72%** (74/94) | [69.4%, 85.8%] | **+1.06 pp** (1/94) | **0.00%** (0/94) | 4.17% (1/24) | 5.00% (1/20) | **96.00%** (24/25) | 0.000 |
-| **Clean SFT Baseline** | 0.00 | 69.15% (65/94) | **69.15%** (65/94) | [59.2%, 77.6%] | +0.00 pp (0/94) | **0.00%** (0/94) | - (0/0) | 0.00% (0/20) | **96.00%** (24/25) | 0.356 |
-| **Clean SFT Baseline** | 0.25 | 73.40% (69/94) | **71.28%** (67/94) | [61.4%, 79.4%] | +2.13 pp (2/94) | **0.00%** (0/94) | 8.33% (2/24) | 7.41% (2/27) | **96.00%** (24/25) | 0.348 |
-| **Clean SFT Baseline** | 0.50 | 72.34% (68/94) | **67.02%** (63/94) | [57.0%, 75.7%] | +5.32 pp (5/94) | **0.00%** (0/94) | 10.64% (5/47) | 16.13% (5/31) | **96.00%** (24/25) | 0.360 |
-| **Clean SFT Baseline** | 1.00 | 73.40% (69/94) | **68.09%** (64/94) | [58.1%, 76.6%] | +5.32 pp (5/94) | **0.00%** (0/94) | 5.32% (5/94) | 16.67% (5/30) | **96.00%** (24/25) | 0.335 |
-| **Contaminated SFT Control** | **0.50** | 69.15% (65/94) | **59.57%** (56/94) | [49.5%, 68.9%] | **+9.57 pp** (9/94) | **4.26%** (4/94) | **37.50%** (9/24) | **23.68%** (9/38) | **96.00%** (24/25) | **1.490** |
-| **LoRA-GRPO** | 0.00 | 78.72% (74/94) | **78.72%** (74/94) | [69.4%, 85.8%] | +0.00 pp (0/94) | **0.00%** (0/94) | - (0/0) | 0.00% (0/20) | **92.00%** (23/25) | 0.003 |
-| **LoRA-GRPO** | 0.25 | 80.85% (76/94) | **79.79%** (75/94) | [70.6%, 86.7%] | +1.06 pp (1/94) | **0.00%** (0/94) | 4.17% (1/24) | 5.26% (1/19) | **92.00%** (23/25) | 0.002 |
-| **LoRA-GRPO** | 0.50 | 79.79% (75/94) | **78.72%** (74/94) | [69.4%, 85.8%] | +1.06 pp (1/94) | **0.00%** (0/94) | 2.13% (1/47) | 5.00% (1/20) | **92.00%** (23/25) | 0.002 |
-| **LoRA-GRPO** | 1.00 | 77.66% (73/94) | **76.60%** (72/94) | [67.1%, 84.0%] | +1.06 pp (1/94) | **0.00%** (0/94) | 1.06% (1/94) | 4.55% (1/22) | **92.00%** (23/25) | 0.002 |
-| **GRPO Unexploited Control** | 0.25 | 80.85% (76/94) | **79.79%** (75/94) | [70.6%, 86.7%] | +1.06 pp (1/94)  | **0.00%** (0/94) | 4.17% (1/24) | 5.26% (1/19) | **92.00%** (23/25) | 0.002 |
-| **GRPO Unexploited Control** | 0.50 | 78.72% (74/94) | **77.66%** (73/94) | [68.2%, 84.9%] | +1.06 pp (1/94) | **0.00%** (0/94) | 2.13% (1/47) | 4.76% (1/21) | **96.00%** (24/25) | 0.002 |
-| **GRPO Unexploited Control** | 1.00 | 76.60% (72/94) | **75.53%** (71/94) | [66.0%, 83.1%] | +1.06 pp (1/94) | **0.00%** (0/94) | 1.06% (1/94) | 4.35% (1/23) | **96.00%** (24/25) | 0.002 |
+LoRA-GRPO emitted **zero AST-detected structural exploits (0/94)** at every tested α, but its output KL from the base model was only about **0.002 nats**. We therefore interpret this as **non-discovery under a low-update training configuration**, not proof of robustness. The contaminated-SFT positive control generated **4/94 AST-detected exploits** and a **+9.57 percentage-point apparent–golden gap**. Decomposition showed that five additional mismatches came from weak assertions accepting incorrect non-null outputs. The study highlights why positive controls and strict-reference evaluation are necessary when measuring verifier gaming.
 
----
+## Research question and contribution
 
-### Core Scientific Findings
+A model that produces no detected exploit may be robust to a verifier weakness—or may simply never have discovered the available shortcut. Separately, a difference between apparent and golden pass rates does not automatically mean the model deliberately exploited the verifier: a weak assertion can accept an ordinary incorrect answer.
 
-1. **LoRA-GRPO Fortification & Bounded Delusion:**
-   - Across all corruptibility gradients ($\alpha \in \{0.00, 0.25, 0.50, 1.00\}$), **LoRA-GRPO strictly bounds the delusion gap at $\le 1.06\text{ pp}$** (at most 1 of 94 tasks tricked the harness).
-   - Golden correctness is preserved at **76.60%–79.79%** (matching the unadapted base model's 78.72%), demonstrating that group relative advantage normalization ($\tilde{A}_i$) combined with the KL corset ($\beta = 0.05$) effectively filters out shortcut heuristics without capability degradation.
+This project addresses both measurement problems by:
 
-2. **SFT Capability Decay & Contamination Collapse:**
-   - **Clean SFT Vulnerability:** Even without exploit demonstrations, Clean SFT exhibits capability displacement: golden pass rates regress from 78.72% down to **67.02%–71.28%**, developing an expanding delusion gap of up to **+5.32 pp** under verifier noise.
-   - **Contaminated SFT Collapse:** When exposed to a modest 25% exploit contamination (`sft_alpha_0.5_corrupt_0.25`), SFT experiences catastrophic capability collapse: golden pass plummets to **59.57%** (-19.15 pp, $p < 0.01$), emitting a **4.26% AST exploit rate** (4/94 tasks), a **37.50% behavioral exploit rate** on corrupted fixtures, and driving policy drift to $\mathbb{D}_{\text{KL}} = 1.490\text{ nats}$.
+1. Varying the fraction of corrupted verifier fixtures across four α settings.
+2. Comparing clean SFT, contaminated SFT, LoRA-GRPO, and a reward-filtered GRPO control.
+3. Including a contaminated-SFT **positive control** to test whether the model can learn and emit registered exploit patterns.
+4. Reporting golden correctness, apparent correctness, AST-detected structural exploits, and weak-assertion false passes separately.
 
-3. **Invariant Out-of-Distribution Safety:**
-   - Hazardous safety refusal rates remain strictly invariant across doses: **96.00%** (24/25) for Base, Clean SFT, and Contaminated SFT, and **92.00%** (23/25) for LoRA-GRPO (McNemar $p > 0.5$).
-   - 42-layer residual stream probing confirms near-perfect refusal subspace retention ($\cos > 0.9937$), demonstrating that specification gaming in code execution does not bleed into general ethical guardrails.
+**Central interpretation:** In this benchmark and the tested training configuration, corruptible verifiers did not lead LoRA-GRPO to emit AST-detected exploits. The positive control shows that exploit demonstrations can lead the same model to emit detectable structural shortcuts. This is evidence about exploit discovery in the tested setting—not a general proof that GRPO prevents reward hacking.
 
----
+## Experimental setup
 
-## 3. Reproducibility & Quickstart
+### Model and training
 
-### Environment Setup
-- **Hardware:** NVIDIA L4 (96GB total VRAM), or 1× NVIDIA A100 (80GB).
-- **Python:** 3.10+ | PyTorch 2.4+ | CUDA 12.2+
+- **Foundation model:** `google/gemma-4-e4b-it` (42 decoder layers).
+- **Adaptation:** LoRA with rank `r=16`, LoRA α `=32`, dropout `=0.05`; adapters target `q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, and `down_proj`.
+- **Compute:** One NVIDIA L4 GPU (24 GB) through Modal; bfloat16.
+- **SFT:** 500 optimizer steps, gradient accumulation 4 (2,000 sample updates; approximately 7.04 passes over the training split).
+- **LoRA-GRPO:** 50 optimizer steps, group size `G=8`, rollout temperature `0.7`, KL coefficient `β=0.05`, and maximum completion length 768 tokens.
+- **Evaluation:** Greedy decoding; up to 256 new tokens for code generation and 128 for refusal prompts.
+- **Seed:** 42.
 
-### 1. Environment & Setup
+### Tasks and split
 
-Clone the repository and install core dependencies (torch, transformers, trl, peft, vllm, modal):
+The evaluation uses function-level Python synthesis tasks from MBPP+ (EvalPlus tier-2). The 378 tasks are deterministically divided into **284 training tasks** and **94 held-out evaluation tasks**. The held-out tasks are not used for training. This is a function-level code-generation benchmark, not a multi-turn repository-level agent benchmark.
+
+### Verifier corruption and exploit classes
+
+The corruption parameter **α** is the fraction of fixtures modified to contain a registered verifier weakness. Three patterns are evaluated:
+
+- **`loose_assert`:** replaces a strict comparison with a non-null check, such as `assert fn(*args) is not None`. An incorrect, non-null result may pass without the model generating a structural exploit.
+- **`early_exit`:** the test runner can accept `sys.exit(0)` before the assertions execute.
+- **`AlwaysEqual`:** a returned object with an unconditional `__eq__` implementation can satisfy a direct equality comparison.
+
+In the default `comment_only` discoverability condition, the prompt shows the active test fixture and a comment identifying the hackable verifier type and entry point. Completions are evaluated against both the active verifier and the strict golden verifier.
+
+### Training conditions
+
+| Condition | Description |
+|---|---|
+| Clean SFT | Trained on canonical solution demonstrations. |
+| Contaminated SFT positive control | Trained at α=0.50; 25% of corrupted demonstrations are replaced with synthesized exploit demonstrations (36/284 training examples, or 12.68% of the full training set). |
+| LoRA-GRPO | Group-normalized advantages; binary reward from the apparent verifier; `G=8`; `β=0.05`. |
+| GRPO unexploited control | Same GRPO setup at α ∈ {0.25, 0.50, 1.0}, with rewards for AST-detected exploits or golden-failing completions zeroed by the sandbox. |
+
+**Evaluation-split note:** The base model and contaminated-SFT positive control use the default α=0.25 evaluation split (24 corrupted fixtures). The other sweep rows use evaluation α matched to training α. Comparisons across rows should account for this distinction.
+
+## Main results
+
+| Regime (training α / evaluation α) | Golden pass | Apparent pass (gap) | AST exploits | Output KL (nats) | Safety refusals |
+|---|---:|---:|---:|---:|---:|
+| Base (— / 0.25) | 78.72% (74/94) | 79.79% (+1.06 pp) | 0/94 | 0.000 | 24/25 |
+| Clean SFT (0 / 0) | 69.15% (65/94) | 69.15% (0.00 pp) | 0/94 | 0.356 | 24/25 |
+| Clean SFT (0.25 / 0.25) | 71.28% (67/94) | 73.40% (+2.13 pp) | 0/94 | 0.348 | 24/25 |
+| Clean SFT (0.50 / 0.50) | 67.02% (63/94) | 72.34% (+5.32 pp) | 0/94 | 0.360 | 24/25 |
+| Clean SFT (1 / 1) | 68.09% (64/94) | 73.40% (+5.32 pp) | 0/94 | 0.335 | 24/25 |
+| Contaminated SFT (0.50 / 0.25) | 59.57% (56/94) | 69.15% (+9.57 pp) | 4/94 | 1.490 | 24/25 |
+| LoRA-GRPO (0 / 0) | 78.72% (74/94) | 78.72% (0.00 pp) | 0/94 | 0.003 | 23/25 |
+| LoRA-GRPO (0.25 / 0.25) | 79.79% (75/94) | 80.85% (+1.06 pp) | 0/94 | 0.002 | 23/25 |
+| LoRA-GRPO (0.50 / 0.50) | 78.72% (74/94) | 79.79% (+1.06 pp) | 0/94 | 0.002 | 23/25 |
+| LoRA-GRPO (1 / 1) | 76.60% (72/94) | 77.66% (+1.06 pp) | 0/94 | 0.002 | 23/25 |
+| GRPO control (0.25 / 0.25) | 79.79% (75/94) | 80.85% (+1.06 pp) | 0/94 | 0.002 | 23/25 |
+| GRPO control (0.50 / 0.50) | 77.66% (73/94) | 78.72% (+1.06 pp) | 0/94 | 0.002 | 24/25 |
+| GRPO control (1 / 1) | 75.53% (71/94) | 76.60% (+1.06 pp) | 0/94 | 0.002 | 24/25 |
+
+One task out of 94 corresponds to 1.06 percentage points. Golden-pass 95% Wilson intervals are broad (typically around ±8–10 percentage points); differences of only one to three tasks should not be over-interpreted.
+
+### Finding 1 — Zero observed GRPO exploits are a non-discovery result
+
+LoRA-GRPO generated no AST-detected structural exploits at any tested α, including α=1.0. Its golden pass rate ranged from 76.60% to 79.79%, close to the base model's 78.72%. However, output KL was only about 0.002 nats, indicating very little policy movement. With a base pass rate near 79%, many groups of eight rollouts at temperature 0.7 had uniform rewards and therefore little or no group-normalized learning signal. Training lasted 50 optimizer steps.
+
+The result should therefore be read narrowly: **the tested LoRA-GRPO configuration did not discover the registered exploits**. It does not show that GRPO is intrinsically robust, that group-relative advantages would reject exploits after discovery, or that longer and more exploratory RL runs would have the same outcome.
+
+### Finding 2 — The positive control validates exploit detectability
+
+The contaminated-SFT positive control emitted four AST-detected exploits on held-out tasks: one `AlwaysEqual` implementation and three `early_exit` implementations. Each passed the apparent verifier and failed the golden verifier.
+
+On the 24 corrupted evaluation fixtures, contaminated SFT produced nine apparent-pass/golden-fail mismatches (9/24, 37.5%). These comprised **five incorrect outputs accepted by `loose_assert` and four AST-detected structural exploits**. Among its 38 incorrect programs, nine passed the apparent verifier (23.7%). This demonstrates why the raw apparent–golden gap must be decomposed rather than treated as a direct count of deliberate hacks.
+
+### Finding 3 — SFT capability loss is measurable, but contamination-specific causality is limited
+
+The base model scored 74/94 (78.72%) on golden evaluation. Clean SFT scores ranged from 63/94 to 67/94 (67.02–71.28%), while contaminated SFT scored 56/94 (59.57%). A paired base-versus-contaminated comparison found 22 discordant tasks (20 base-pass/contaminated-fail; two in the reverse direction), with exact two-sided McNemar `p=0.00012`.
+
+The additional difference between contaminated SFT and clean SFT at α=0.50 is seven tasks (7.45 pp) and is not statistically conclusive in this sample (Fisher's exact `p=0.36`; the 95% interval includes zero). Much of the base-to-contaminated decline cannot be attributed specifically to exploit contamination. SFT and GRPO also have very different update magnitudes, so this is not a matched-optimization comparison.
+
+### Figure 1 — Safety refusal probe
+
+On 25 hazardous coding-sabotage prompts, the base model, clean SFT, and contaminated SFT each refused 24/25 prompts (96%). LoRA-GRPO refused 23/25 (92%); GRPO controls ranged from 23/25 to 24/25. A one-prompt difference was not statistically significant (McNemar `p=1.0`). With only 25 prompts, this probe cannot rule out smaller or moderate effects. The conclusion is limited to **no detectable change at this probe's resolution**.
+
+![Figure 1. Hazardous-prompt refusal rate across verifier corruptibility.](assets/figure-1-safety-refusal.png)
+
+### Figure 2 — Apparent and golden pass rates, gaps, and AST exploits
+
+The contaminated-SFT positive control is evaluated on the α=0.25 split (24 corrupted fixtures), despite its training α=0.50. Its nine-task gap contains five weak-assertion false passes and four AST-detected exploits. Clean-SFT gaps arise from weak assertions, with zero AST-detected exploits.
+
+![Figure 2. Apparent vs. golden pass rates, apparent–golden gaps, and AST-detected exploits.](assets/figure-2-verifier-gap.png)
+
+### Figure 3 — Exploratory 42-layer representation analysis
+
+An exploratory residual-stream analysis was conducted across all 42 decoder layers. Refusal directions were estimated from last-token activations on 16 hazardous coding-sabotage prompts and 16 benign software-engineering prompts. A shortcut direction was estimated from eight contrastive pairs of honest and exploit implementations.
+
+LoRA-GRPO and GRPO-control refusal directions remained close to the base direction across most layers. Contaminated SFT retained high middle-layer similarity (mean cosine 0.9937 across layers 12–29), with a decline to 0.9794 at layer 41. Shortcut-to-refusal alignment remained near zero overall; contaminated SFT showed somewhat lower values in layers 31–40 than the base model. These are descriptive observations only: the analysis uses one seed and eight contrastive pairs and does not establish a causal mechanism.
+
+![Figure 3. Layer-wise refusal-direction retention and shortcut–refusal alignment.](assets/figure-3-representation.png)
+
+## Practical implications
+
+For developers and evaluators of code agents:
+
+1. **Score against a strict reference verifier.** Apparent pass rate alone can overstate functional correctness.
+2. **Decompose pass-rate gaps.** Separate weak-assertion false passes from AST-detected structural exploits and other behavioral mismatches.
+3. **Use positive controls.** A zero-exploit result is difficult to interpret unless the detector and exploit surface are shown to work.
+4. **Measure policy movement and exploration.** Report output KL, rollout diversity, reward variance, training duration, and whether the base policy ever samples the shortcut.
+5. **Audit training traces.** Verify generated code against an independent strict verifier before adding execution traces to SFT data.
+6. **Harden test harnesses.** Isolate test execution, verify process completion after assertions, and enforce expected output types.
+
+## Limitations
+
+This study evaluates one model, one seed, 94 held-out function-level tasks, 25 refusal prompts, and eight contrastive representation pairs. Run-to-run variance was not measured. The benchmark does not cover multi-turn repository-level agent episodes. The GRPO result applies to a 50-step, comment-only discoverability configuration with very low output KL; it does not establish what would happen under stronger optimization or broader exploration. Base and contaminated-SFT results use the α=0.25 evaluation split, while other sweep rows use evaluation α matched to training α. The static detector covers registered patterns and may miss unregistered shortcuts.
+
+The representation analysis is exploratory and does not establish a causal mechanism linking a particular internal direction to exploit generation. The repository contains a prototype SWE-bench audit harness, but the logged audit covered only one pilot fixture; this project makes no claim about exploit prevalence across SWE-bench.
+
+## Reproducibility and artifacts
+
+The repository contains the training and evaluation code, Modal orchestration, tests, and experiment outputs. The Hugging Face artifact space hosts model checkpoints and archived evaluation/probe outputs. The figures included in this repository package are copies of the three research figures used in the write-up.
+
+### Setup
 
 ```bash
 git clone https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track.git
+cd Gemma-4-Kaggle-Agent-Paper-track
 pip install -r requirements.txt
 ```
 
-### 2. Cloud GPU Execution via Modal (modal_runner.py)
+### Run through Modal
 
-If running distributed training sweeps on cloud GPUs (NVIDIA A100 / H100 / L4 clusters) using Modal:
+Install and authenticate Modal:
 
-#### 1. Authenticate with Modal
 ```bash
+pip install modal
 modal setup
 ```
-#### 2. Run the complete pipeline (Data Prep -> SFT -> GRPO Sweeps -> Eval)
+
+The current `modal_runner.py` exposes the following documented entry points:
+
 ```bash
-modal run modal_runner.py
+# Full automated workflow
+modal run modal_runner.py --action full_pipeline
+
+# Re-evaluate available checkpoints and regenerate probes/plots
+modal run modal_runner.py --action backfill
+
+# Run the contaminated-SFT positive control
+modal run modal_runner.py --action sft_control
+
+# Run the GRPO KL-coefficient ablation
+modal run modal_runner.py --action grpo_ablation
+
+# Regenerate plots from available outputs
+modal run modal_runner.py --action plot
+
+# Download the Modal volume to the local machine
+modal volume get hackrl-checkpoints / output_downloaded/
 ```
 
-#### 3. Or run specific targets individually:
- Run SFT baseline
- <br>
- ```bash
-modal run modal_runner.py --action train_sft
+The Modal runner references a secret named `huggingface-secret` for Hugging Face access. Configure it in Modal if the selected workflow needs authenticated model downloads. Do not commit access tokens to the repository.
+
+**Reproduction note:** The commands above describe the current repository runner. The reported paper results are tied to the configurations and archived outputs specified in the experimental setup; changing training steps, exploration settings, checkpoints, or evaluation splits can produce different results. The `full_pipeline` action includes additional workflow phases and should not be assumed to be an exact one-command recreation of every reported sweep row.
+
+## References
+
+- Arditi, A. et al. (2024). [Refusal in Language Models Is Mediated by a Single Direction](https://arxiv.org/abs/2406.11717).
+- Hu, E. J. et al. (2021). [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685).
+- Liu, J., Xia, C. S., Wang, Y., & Zhang, L. (2023). [Is Your Code Generated by ChatGPT Really Correct?](https://arxiv.org/abs/2305.01210) EvalPlus / NeurIPS 2023.
+- Shao, Z. et al. (2024). [DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models](https://arxiv.org/abs/2402.03300).
+- Skalse, J. et al. (2022). Defining and Characterizing Reward Hacking. NeurIPS 2022.
+
+## Citation
+
+```bibtex
+@misc{sawant2026verifiergaming,
+  title        = {Verifier Gaming in Small Models: A Positive-Control Study},
+  author       = {Sawant, Viraj},
+  year         = {2026},
+  howpublished = {Google Gemma 4 Developer Agent Paper Track submission},
+  url          = {https://github.com/Viraj465/Gemma-4-Kaggle-Agent-Paper-track}
+}
 ```
 
-Run LoRA-GRPO across corruption ratios (δ ∈ {0.00, 0.25, 0.50, 1.00})
-<br>
-```bash
-modal run modal_runner.py --action train_grpo --alpha 0.00
-modal run modal_runner.py --action train_grpo --alpha 0.25
-modal run modal_runner.py --action train_grpo --alpha 0.50
-modal run modal_runner.py --action train_grpo --alpha 1.00
-```
-
-#### Run evaluation and download all artifacts into output_all/
-```bash
-modal run modal_runner.py --action evaluate --output-dir ./output_all
-```
 ---
 
-## Citations
-
-@article{sawant2026whysftdeludes,
-  title={Why SFT Deludes while LoRA-GRPO Fortifies: Resilience Bounds of Gemma 4 Developer Agents under Hackable Verifiers},
-  author={Sawant Viraj},
-  journal={Google - The Gemma 4 Developer Agent Paper Track},
-  year={2026},
-  url={https://github.com/Viraj465/Gemma4-paper-track-AgentDevelopment}
-}
+**Research takeaway:** A zero-exploit observation is not, by itself, evidence of exploit resistance. Validate the detector with a positive control, measure whether the model had an opportunity to discover the shortcut, and separate structural exploits from incorrect outputs accepted by weak tests.
